@@ -1,88 +1,103 @@
-import json
 import logging
 from typing import Optional
-import httpx
+
+import google.generativeai as genai
+from google.generativeai.types import HarmCategory, HarmBlockThreshold
 
 from config import settings
 
 logger = logging.getLogger(__name__)
 
-GEMMA_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent'
+# Configure the SDK once at import time
+if settings.GEMMA_API_KEY:
+    genai.configure(api_key=settings.GEMMA_API_KEY)
+
+_ANALYSIS_PROMPT = """
+You are a disaster assessment AI for relief organizations in Bangladesh.
+
+Analyze the disaster report below (description may be in Bengali or English).
+Assess the situation based on the description and any images provided.
+
+Respond with ONLY a valid JSON object — no markdown, no explanation — with these exact fields:
+
+{{
+  "damage_level": "<none|minor|moderate|severe|catastrophic>",
+  "urgency_score": "<low|medium|high|critical>",
+  "relief_items": ["<items from: food, clean_water, medicine, shelter, rescue, sanitation>"],
+  "missing_resources": ["<specific items or resources urgently needed>"],
+  "ai_summary": "<English paragraph summarizing the situation for a relief coordinator>",
+  "confidence": <float 0.0 to 1.0>
+}}
+
+Location: {address} (lat: {lat}, lng: {lng})
+
+Report description:
+{description}
+"""
+
 
 async def analyze_report(
     description: str,
-    images: list[str],
-    location: dict
+    images: list[str],  # base64-encoded image strings
+    location: dict,
 ) -> Optional[dict]:
-    if not settings.GEMMA_API_KEY:
-        logger.warning("GEMMA_API_KEY is not set. Skipping AI analysis.")
-        return None
-        
-    prompt = """
-    Analyze the following disaster report and images (if provided).
-    The description may be in Bengali or English; please translate internally if needed.
-    
-    Return a JSON object with the following exact fields:
-    - damage_level: string, one of 'none', 'minor', 'moderate', 'severe', 'catastrophic'
-    - urgency_score: string, one of 'low', 'medium', 'high', 'critical'
-    - relief_items: list of strings, chosen from ['food', 'clean_water', 'medicine', 'shelter', 'rescue', 'sanitation']
-    - missing_resources: list of strings (e.g. specific tools or items needed)
-    - ai_summary: string, an English paragraph summarizing the situation for an admin
-    - confidence: float between 0.0 and 1.0 representing your confidence in this assessment
-    
-    Location context:
-    Latitude: {lat}
-    Longitude: {lng}
-    Address: {address}
-    
-    Description:
-    {desc}
     """
-    
-    prompt = prompt.format(
-        lat=location.get('lat', 'Unknown'),
-        lng=location.get('lng', 'Unknown'),
-        address=location.get('address', 'Unknown'),
-        desc=description
-    )
-    
-    parts = [{"text": prompt}]
-    
-    for img_base64 in images:
-        parts.append({
-            "inline_data": {
-                "mime_type": "image/jpeg",
-                "data": img_base64
-            }
-        })
-        
-    payload = {
-        "contents": [
-            {
-                "parts": parts
-            }
-        ],
-        "generationConfig": {
-            "temperature": 0.3,
-            "responseMimeType": "application/json"
-        }
-    }
-    
-    url = GEMMA_API_URL.format(model=settings.GEMMA_MODEL)
-    
+    Send a disaster report to Gemma 4 for structured analysis.
+
+    Returns a dict with: damage_level, urgency_score, relief_items,
+    missing_resources, ai_summary, confidence — or None on failure.
+    """
+    if not settings.GEMMA_API_KEY:
+        logger.warning("GEMMA_API_KEY not set — skipping AI analysis.")
+        return None
+
     try:
-        async with httpx.AsyncClient(timeout=60) as client:
-            response = await client.post(
-                url,
-                params={"key": settings.GEMMA_API_KEY},
-                json=payload
-            )
-            response.raise_for_status()
-            data = response.json()
-            
-            text_response = data.get("candidates", [])[0].get("content", {}).get("parts", [])[0].get("text", "{}")
-            result = json.loads(text_response)
-            return result
+        model = genai.GenerativeModel(model_name=settings.GEMMA_MODEL)
+
+        prompt = _ANALYSIS_PROMPT.format(
+            lat=location.get("lat", "unknown"),
+            lng=location.get("lng", "unknown"),
+            address=location.get("address") or "unknown",
+            description=description,
+        )
+
+        # Build content parts: text prompt first, then images
+        parts: list = [prompt]
+        for img_b64 in images:
+            if img_b64:
+                parts.append({
+                    "inline_data": {
+                        "mime_type": "image/jpeg",
+                        "data": img_b64,
+                    }
+                })
+
+        response = await model.generate_content_async(
+            parts,
+            generation_config=genai.GenerationConfig(
+                temperature=0.2,
+                response_mime_type="application/json",
+            ),
+            safety_settings={
+                HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
+                HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
+                HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
+                HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
+            },
+        )
+
+        import json
+        result: dict = json.loads(response.text)
+
+        # Validate required keys are present
+        required_keys = {"damage_level", "urgency_score", "relief_items",
+                         "missing_resources", "ai_summary", "confidence"}
+        if not required_keys.issubset(result.keys()):
+            logger.error(f"Gemma response missing keys: {required_keys - result.keys()}")
+            return None
+
+        return result
+
     except Exception as e:
-        logger.error(f"Failed to analyze report with Gemma: {e}")
+        logger.error(f"Gemma analysis failed: {e}", exc_info=True)
         return None

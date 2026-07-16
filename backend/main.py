@@ -1,4 +1,6 @@
 import os
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -8,12 +10,19 @@ from models.database import create_db_and_tables
 from routers import reports, admin, auth
 from utils.websocket import manager
 
-app = FastAPI(title="ReliefIQ API")
 
-# Ensure upload dir exists
-os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
+    await create_db_and_tables()
+    yield
+    # Shutdown (add cleanup here if needed)
 
-# Mount static files for uploads
+
+app = FastAPI(title="ReliefIQ API", lifespan=lifespan)
+
+# Mount static files for uploaded images
 app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")
 
 # CORS middleware
@@ -30,16 +39,13 @@ app.include_router(reports.router)
 app.include_router(admin.router)
 app.include_router(auth.router)
 
-@app.on_event("startup")
-async def on_startup():
-    await create_db_and_tables()
 
 @app.websocket("/ws/dashboard")
 async def websocket_endpoint(websocket: WebSocket):
     await manager.connect(websocket)
     try:
         while True:
-            # Keep connection open
+            # Keep connection alive; client can send pings
             await websocket.receive_text()
     except WebSocketDisconnect:
         manager.disconnect(websocket)
