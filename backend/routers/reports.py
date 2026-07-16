@@ -1,10 +1,11 @@
 from typing import Optional, List
-from fastapi import APIRouter, Depends, Form, UploadFile, File, Query, HTTPException, status
+from fastapi import APIRouter, Depends, Form, UploadFile, File, Query, HTTPException, status, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
 
 from models.database import get_session
 from services.report_service import create_report, get_reports, get_report_by_id, update_report_status
+from services.pdf_service import generate_report_pdf
 from utils.auth import get_current_admin
 
 router = APIRouter(prefix="/api/reports", tags=["reports"])
@@ -92,6 +93,19 @@ async def get_report(id: str, session: AsyncSession = Depends(get_session)):
         "data": report,
         "error": None
     }
+
+@router.get("/{id}/pdf")
+async def get_report_pdf(id: str, session: AsyncSession = Depends(get_session)):
+    report = await get_report_by_id(session, id)
+    if not report:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found")
+        
+    pdf_bytes = generate_report_pdf(report)
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="ReliefIQ_Report_{id}.pdf"'}
+    )
 
 @router.patch("/{id}/status")
 async def update_status(
