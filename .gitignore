@@ -47,3 +47,5 @@ logs/
 
 # Pi deployment artifacts
 /var/lib/reliefiq/
+frontend/dist/
+frontend/node_modules/
