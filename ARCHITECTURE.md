@@ -13,6 +13,7 @@
 
 ### 1. Nginx (Port 80/443)
 - Serves the built React app as static files from `/var/www/reliefiq/`
+- **PWA Ready**: The frontend acts as a Progressive Web App (PWA) with a manifest and service worker, allowing native-like mobile install.
 - Reverse proxies `/api/*` and `/ws/*` to FastAPI on port 8000
 - Handles SSL termination (Cloudflare manages the certificate)
 
