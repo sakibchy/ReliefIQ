@@ -5,6 +5,8 @@ from sqlalchemy import select, func, case
 
 from models.database import get_session, Report, ReportStatus, UrgencyScore
 from utils.auth import get_current_admin
+from services.gemma_service import generate_sitrep, generate_allocation_plan
+import json
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
@@ -106,3 +108,36 @@ async def get_map_data(
         "data": {"type": "FeatureCollection", "features": features},
         "error": None,
     }
+
+@router.get("/sitrep")
+async def get_sitrep(
+    session: AsyncSession = Depends(get_session),
+    admin: str = Depends(get_current_admin)
+):
+    rows = (await session.execute(
+        select(Report)
+        .where(Report.status != ReportStatus.resolved)
+        .where(Report.urgency_score.in_([UrgencyScore.critical, UrgencyScore.high]))
+        .order_by(Report.created_at.desc())
+        .limit(20)
+    )).scalars().all()
+    
+    if not rows:
+        return {"success": True, "data": "No critical or high-priority reports to analyze.", "error": None}
+        
+    reports_data = "\n\n".join([f"Location: {r.address}\nDamage: {r.damage_level}\nAI Summary: {r.ai_summary}" for r in rows])
+    
+    sitrep = await generate_sitrep(reports_data)
+    return {"success": True, "data": sitrep, "error": None}
+
+@router.get("/allocate")
+async def get_allocation(
+    session: AsyncSession = Depends(get_session),
+    admin: str = Depends(get_current_admin)
+):
+    stats_res = await get_stats(session, admin)
+    stats_data = json.dumps(stats_res["data"], indent=2)
+    
+    plan = await generate_allocation_plan(stats_data)
+    return {"success": True, "data": plan, "error": None}
+

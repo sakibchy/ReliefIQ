@@ -101,3 +101,63 @@ async def analyze_report(
     except Exception as e:
         logger.error(f"Gemma analysis failed: {e}", exc_info=True)
         return None
+
+_SITREP_PROMPT = """
+You are a senior disaster relief coordinator in Bangladesh.
+Review the following active, critical/high-priority disaster reports.
+Write a concise, professional Executive Situation Report (Sitrep) summarizing:
+1. The most heavily impacted areas.
+2. The overall scale of damage.
+3. The most critical, immediate threats to life or infrastructure.
+Keep it under 3 paragraphs. Use clear, direct language.
+
+Reports Data:
+{reports_data}
+"""
+
+_ALLOCATION_PROMPT = """
+You are an AI logistics and resource allocation director for a disaster response agency.
+Given the current dashboard statistics of all incoming reports across the region, formulate a strategic resource allocation plan.
+Your plan should include:
+1. Which relief items to prioritize procuring immediately.
+2. High-level strategic advice for deploying volunteer teams.
+3. Any potential logistical bottlenecks you foresee based on the data.
+Be concise, actionable, and format your response with bullet points.
+
+Dashboard Statistics:
+{stats_data}
+"""
+
+async def generate_sitrep(reports_data: str) -> Optional[str]:
+    if not settings.GEMMA_API_KEY:
+        return "AI Situation Report unavailable (API Key not set)."
+        
+    try:
+        model = genai.GenerativeModel(model_name=settings.GEMMA_MODEL)
+        prompt = _SITREP_PROMPT.format(reports_data=reports_data)
+        
+        response = await model.generate_content_async(
+            prompt,
+            generation_config=genai.GenerationConfig(temperature=0.4),
+        )
+        return response.text
+    except Exception as e:
+        logger.error(f"Gemma Sitrep generation failed: {e}")
+        return "Error generating Situation Report."
+
+async def generate_allocation_plan(stats_data: str) -> Optional[str]:
+    if not settings.GEMMA_API_KEY:
+        return "AI Resource Allocation unavailable (API Key not set)."
+        
+    try:
+        model = genai.GenerativeModel(model_name=settings.GEMMA_MODEL)
+        prompt = _ALLOCATION_PROMPT.format(stats_data=stats_data)
+        
+        response = await model.generate_content_async(
+            prompt,
+            generation_config=genai.GenerationConfig(temperature=0.3),
+        )
+        return response.text
+    except Exception as e:
+        logger.error(f"Gemma Allocation Plan generation failed: {e}")
+        return "Error generating Resource Allocation Plan."

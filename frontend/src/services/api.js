@@ -91,6 +91,20 @@ export async function getMapData() {
   return request('GET', '/dashboard/map');
 }
 
+/**
+ * Generate AI Situation Report.
+ */
+export async function generateSitrep() {
+  return request('GET', '/dashboard/sitrep');
+}
+
+/**
+ * Generate AI Resource Allocation Plan.
+ */
+export async function generateAllocationPlan() {
+  return request('GET', '/dashboard/allocate');
+}
+
 // ── Auth ───────────────────────────────────────────────────────
 
 /**

@@ -1,13 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { RefreshCw, Bell } from 'lucide-react';
+import { RefreshCw, Bell, Sparkles, X } from 'lucide-react';
 import Navbar from '../components/common/Navbar.jsx';
 import StatsCards from '../components/Dashboard/StatsCards.jsx';
 import PriorityQueue from '../components/Dashboard/PriorityQueue.jsx';
 import ReportDetail from '../components/Dashboard/ReportDetail.jsx';
 import DisasterMap from '../components/Map/DisasterMap.jsx';
 import { LoadingScreen } from '../components/common/LoadingSpinner.jsx';
-import { getDashboardStats, getMapData, listReports } from '../services/api.js';
+import { getDashboardStats, getMapData, listReports, generateSitrep, generateAllocationPlan } from '../services/api.js';
 import { useWebSocket } from '../hooks/useWebSocket.js';
 import { RELIEF_ITEMS } from '../utils/constants.js';
 
@@ -19,6 +19,7 @@ export default function Admin() {
   const [selectedReport, setSelected] = useState(null);
   const [loading, setLoading]       = useState(true);
   const [notifications, setNotifs]  = useState([]);
+  const [aiModal, setAiModal]       = useState({ open: false, title: '', content: '', loading: false });
 
   const fetchAll = useCallback(async () => {
     const [statsRes, mapRes, reportsRes] = await Promise.all([
@@ -73,6 +74,16 @@ export default function Admin() {
     setSelected(updated);
   }, []);
 
+  const handleAiAction = async (type) => {
+    setAiModal({ open: true, title: type === 'sitrep' ? 'Situation Report' : 'Resource Allocation', content: '', loading: true });
+    const res = type === 'sitrep' ? await generateSitrep() : await generateAllocationPlan();
+    if (res.success) {
+      setAiModal(prev => ({ ...prev, content: res.data, loading: false }));
+    } else {
+      setAiModal(prev => ({ ...prev, content: 'Failed to generate AI response. Make sure Gemma API key is set.', loading: false }));
+    }
+  };
+
   if (loading) return <LoadingScreen label="Loading dashboard…" />;
 
   return (
@@ -102,9 +113,17 @@ export default function Admin() {
               <h1 style={{ fontSize: 28 }}>Dashboard</h1>
               <p className="text-muted" style={{ fontSize: 14 }}>Real-time disaster response overview</p>
             </div>
-            <button className="btn btn-ghost btn-sm" onClick={fetchAll}>
-              <RefreshCw size={14} /> Refresh
-            </button>
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button className="btn btn-primary btn-sm" onClick={() => handleAiAction('sitrep')}>
+                <Sparkles size={14} /> AI Sitrep
+              </button>
+              <button className="btn btn-secondary btn-sm" style={{ background: 'rgba(255,255,255,0.1)' }} onClick={() => handleAiAction('allocate')}>
+                <Sparkles size={14} /> AI Allocation
+              </button>
+              <button className="btn btn-ghost btn-sm" onClick={fetchAll}>
+                <RefreshCw size={14} /> Refresh
+              </button>
+            </div>
           </div>
 
           {/* Stats */}
@@ -171,6 +190,39 @@ export default function Admin() {
           onClose={() => setSelected(null)}
           onUpdated={handleReportUpdated}
         />
+      )}
+
+      {/* AI Modal */}
+      {aiModal.open && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)',
+          zIndex: 400, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20
+        }}>
+          <div className="card animate-slide" style={{ width: '100%', maxWidth: 700, maxHeight: '80vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: 0 }}>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Sparkles size={18} color="var(--color-primary)" />
+                <h3 style={{ fontSize: 18 }}>{aiModal.title}</h3>
+              </div>
+              <button className="btn btn-ghost" style={{ padding: 4 }} onClick={() => setAiModal({ open: false, title: '', content: '', loading: false })}>
+                <X size={20} />
+              </button>
+            </div>
+            <div style={{ padding: 24, overflowY: 'auto', flex: 1, fontSize: 15, lineHeight: 1.6, color: 'var(--color-text)' }}>
+              {aiModal.loading ? (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: 40 }}>
+                  <div className="spinner" style={{ width: 30, height: 30, borderWidth: 3 }}></div>
+                  <p className="text-muted">Gemma 4 is analyzing data...</p>
+                </div>
+              ) : (
+                <div style={{ whiteSpace: 'pre-wrap' }}>
+                  {aiModal.content}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </>
   );
