@@ -84,6 +84,15 @@ export default function ReportDetail({ report, onClose, onUpdated }) {
           <p className="form-label mb-2">Description</p>
           <div style={{ background: 'var(--glass-bg)', border: '1px solid var(--color-border)', borderRadius: 10, padding: '12px 14px' }}>
             <p style={{ fontSize: 13, lineHeight: 1.7, color: 'var(--color-text-muted)' }}>{report.description}</p>
+            {report.description_en && report.description_en !== report.description && (
+              <>
+                <hr style={{ borderColor: 'var(--color-border)', margin: '12px 0' }} />
+                <p style={{ fontSize: 13, lineHeight: 1.7, color: 'var(--color-text-muted)' }}>
+                  <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>Translation: </span>
+                  {report.description_en}
+                </p>
+              </>
+            )}
           </div>
         </div>
 

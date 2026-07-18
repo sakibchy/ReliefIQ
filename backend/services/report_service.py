@@ -57,6 +57,7 @@ async def create_report(
         report.urgency_score = ai_result.get("urgency_score")
         report.relief_items = json.dumps(ai_result.get("relief_items", []))
         report.missing_resources = json.dumps(ai_result.get("missing_resources", []))
+        report.description_en = ai_result.get("translated_description")
         report.ai_summary = ai_result.get("ai_summary")
         report.confidence = ai_result.get("confidence")
         

@@ -25,6 +25,7 @@ Respond with ONLY a valid JSON object — no markdown, no explanation — with t
   "urgency_score": "<low|medium|high|critical>",
   "relief_items": ["<items from: food, clean_water, medicine, shelter, rescue, sanitation>"],
   "missing_resources": ["<specific items or resources urgently needed>"],
+  "translated_description": "<English translation of the original description>",
   "ai_summary": "<English paragraph summarizing the situation for a relief coordinator>",
   "confidence": <float 0.0 to 1.0>
 }}
@@ -91,7 +92,7 @@ async def analyze_report(
 
         # Validate required keys are present
         required_keys = {"damage_level", "urgency_score", "relief_items",
-                         "missing_resources", "ai_summary", "confidence"}
+                         "missing_resources", "translated_description", "ai_summary", "confidence"}
         if not required_keys.issubset(result.keys()):
             logger.error(f"Gemma response missing keys: {required_keys - result.keys()}")
             return None
