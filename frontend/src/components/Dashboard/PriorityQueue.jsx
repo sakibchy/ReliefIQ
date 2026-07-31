@@ -18,7 +18,7 @@ export default function PriorityQueue({ reports = [], selectedId, onSelect }) {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, overflowY: 'auto', maxHeight: 600 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       {sorted.map(r => (
         <button
           key={r.id}

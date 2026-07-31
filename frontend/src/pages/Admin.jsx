@@ -150,7 +150,7 @@ export default function Admin() {
           )}
 
           {/* Map + Queue */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 20, minHeight: 560 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 20, height: 'calc(100vh - 280px)', minHeight: 560 }}>
 
             {/* Map */}
             <div className="card" style={{ padding: 0, overflow: 'hidden', minHeight: 500 }}>
