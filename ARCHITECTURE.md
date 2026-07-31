@@ -26,8 +26,9 @@
 - Stored at `/var/lib/reliefiq/reliefiq.db`
 - Backed up daily via cron to `/var/lib/reliefiq/backups/`
 
-### 4. Gemma 4 (Google AI Studio)
+### 4. Gemma 4 (via OpenRouter)
 - Called exclusively from `backend/services/gemma_service.py`
+- Accessed through OpenRouter's OpenAI-compatible API (`google/gemma-4-31b-it:free`) — still Gemma 4 as the sole LLM, just hosted via OpenRouter instead of Google AI Studio directly
 - Uses multimodal endpoint (text + vision)
 - Prompt template stored in `backend/services/prompts/analyze_report.txt`
 

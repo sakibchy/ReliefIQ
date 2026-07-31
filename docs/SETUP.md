@@ -10,7 +10,7 @@
 
 ## API Keys Required
 
-1. **Google AI Studio** → [aistudio.google.com](https://aistudio.google.com) → Get API Key (free)
+1. **OpenRouter** → [openrouter.ai/keys](https://openrouter.ai/keys) → Get API Key (free, no billing required for `google/gemma-4-31b-it:free`)
 2. **OpenWeatherMap** → [openweathermap.org/api](https://openweathermap.org/api) → Free tier
 
 ---

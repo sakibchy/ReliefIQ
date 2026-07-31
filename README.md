@@ -2,7 +2,7 @@
 
 > **Hackathon:** Build with Gemma 4 — ML, AI, Deep Learning & NLP Community  
 > **Team:** sakibchy + Ambia Ferdous Mimim  
-> **Model:** Gemma 4 via Google AI Studio  
+> **Model:** Gemma 4 via OpenRouter  
 > **Status:** 🚧 In Development
 
 ---
@@ -68,7 +68,7 @@ During floods, cyclones, earthquakes, and other natural disasters, relief organi
                       │ API calls
                       ▼
 ┌─────────────────────────────────────────────────────┐
-│           Google AI Studio — Gemma 4                 │
+│              OpenRouter — Gemma 4                     │
 │   (Damage assessment, urgency scoring,               │
 │    relief recommendations, report generation)        │
 └─────────────────────────────────────────────────────┘
@@ -80,7 +80,7 @@ During floods, cyclones, earthquakes, and other natural disasters, relief organi
 
 | Layer | Technology | Purpose |
 |---|---|---|
-| **AI Model** | Gemma 4 (Google AI Studio) | Core intelligence |
+| **AI Model** | Gemma 4 (via OpenRouter) | Core intelligence |
 | **Backend** | FastAPI + Uvicorn | REST API + WebSocket server |
 | **Frontend** | React + Vite | User & admin interface |
 | **Database** | SQLite + SQLModel | Persistent storage |
@@ -148,7 +148,7 @@ ReliefIQ/
 ### Prerequisites
 - Python 3.11+
 - Node.js 20+
-- Google AI Studio API key → [aistudio.google.com](https://aistudio.google.com)
+- OpenRouter API key → [openrouter.ai/keys](https://openrouter.ai/keys) (free, no billing required)
 - OpenWeatherMap API key → [openweathermap.org](https://openweathermap.org/api) (free)
 
 ### 1. Clone & Configure
@@ -204,7 +204,7 @@ See [docs/API.md](docs/API.md) for full reference.
 See [.env.example](.env.example) for all required variables.
 
 ```env
-GEMMA_API_KEY=your_google_ai_studio_key
+OPENROUTER_API_KEY=your_openrouter_key
 OPENWEATHER_API_KEY=your_openweathermap_key
 DATABASE_URL=sqlite:///./reliefiq.db
 CORS_ORIGINS=http://localhost:5173
