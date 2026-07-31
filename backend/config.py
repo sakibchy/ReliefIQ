@@ -3,7 +3,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     GEMMA_API_KEY: str = ""
-    GEMMA_MODEL: str = "gemma-4-vision-preview"
+    OPENROUTER_API_KEY: str = ""
+    GEMMA_MODEL: str = "google/gemma-4-31b-it:free"
 
     OPENWEATHER_API_KEY: str = ""
 

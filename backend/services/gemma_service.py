@@ -1,16 +1,17 @@
+import json
 import logging
 from typing import Optional
 
-import google.generativeai as genai
-from google.generativeai.types import HarmCategory, HarmBlockThreshold
+from openai import AsyncOpenAI
 
 from config import settings
 
 logger = logging.getLogger(__name__)
 
-# Configure the SDK once at import time
-if settings.GEMMA_API_KEY:
-    genai.configure(api_key=settings.GEMMA_API_KEY)
+_client = AsyncOpenAI(
+    base_url="https://openrouter.ai/api/v1",
+    api_key=settings.OPENROUTER_API_KEY,
+) if settings.OPENROUTER_API_KEY else None
 
 _ANALYSIS_PROMPT = """
 You are a disaster assessment AI for relief organizations in Bangladesh.
@@ -48,13 +49,11 @@ async def analyze_report(
     Returns a dict with: damage_level, urgency_score, relief_items,
     missing_resources, ai_summary, confidence — or None on failure.
     """
-    if not settings.GEMMA_API_KEY:
-        logger.warning("GEMMA_API_KEY not set — skipping AI analysis.")
+    if not _client:
+        logger.warning("OPENROUTER_API_KEY not set — skipping AI analysis.")
         return None
 
     try:
-        model = genai.GenerativeModel(model_name=settings.GEMMA_MODEL)
-
         prompt = _ANALYSIS_PROMPT.format(
             lat=location.get("lat", "unknown"),
             lng=location.get("lng", "unknown"),
@@ -62,33 +61,22 @@ async def analyze_report(
             description=description,
         )
 
-        # Build content parts: text prompt first, then images
-        parts: list = [prompt]
+        content: list = [{"type": "text", "text": prompt}]
         for img_b64 in images:
             if img_b64:
-                parts.append({
-                    "inline_data": {
-                        "mime_type": "image/jpeg",
-                        "data": img_b64,
-                    }
+                content.append({
+                    "type": "image_url",
+                    "image_url": {"url": f"data:image/jpeg;base64,{img_b64}"},
                 })
 
-        response = await model.generate_content_async(
-            parts,
-            generation_config=genai.GenerationConfig(
-                temperature=0.2,
-                response_mime_type="application/json",
-            ),
-            safety_settings={
-                HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
-                HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
-                HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
-                HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
-            },
+        response = await _client.chat.completions.create(
+            model=settings.GEMMA_MODEL,
+            messages=[{"role": "user", "content": content}],
+            temperature=0.2,
+            response_format={"type": "json_object"},
         )
 
-        import json
-        result: dict = json.loads(response.text)
+        result: dict = json.loads(response.choices[0].message.content)
 
         # Validate required keys are present
         required_keys = {"damage_level", "urgency_score", "relief_items",
@@ -140,35 +128,35 @@ Dashboard Statistics:
 """
 
 async def generate_sitrep(reports_data: str) -> Optional[str]:
-    if not settings.GEMMA_API_KEY:
+    if not _client:
         return "AI Situation Report unavailable (API Key not set)."
-        
+
     try:
-        model = genai.GenerativeModel(model_name=settings.GEMMA_MODEL)
         prompt = _SITREP_PROMPT.format(reports_data=reports_data)
-        
-        response = await model.generate_content_async(
-            prompt,
-            generation_config=genai.GenerationConfig(temperature=0.4),
+
+        response = await _client.chat.completions.create(
+            model=settings.GEMMA_MODEL,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.4,
         )
-        return response.text
+        return response.choices[0].message.content
     except Exception as e:
         logger.error(f"Gemma Sitrep generation failed: {e}")
         return "Error generating Situation Report."
 
 async def generate_allocation_plan(stats_data: str) -> Optional[str]:
-    if not settings.GEMMA_API_KEY:
+    if not _client:
         return "AI Resource Allocation unavailable (API Key not set)."
-        
+
     try:
-        model = genai.GenerativeModel(model_name=settings.GEMMA_MODEL)
         prompt = _ALLOCATION_PROMPT.format(stats_data=stats_data)
-        
-        response = await model.generate_content_async(
-            prompt,
-            generation_config=genai.GenerationConfig(temperature=0.3),
+
+        response = await _client.chat.completions.create(
+            model=settings.GEMMA_MODEL,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.3,
         )
-        return response.text
+        return response.choices[0].message.content
     except Exception as e:
         logger.error(f"Gemma Allocation Plan generation failed: {e}")
         return "Error generating Resource Allocation Plan."
