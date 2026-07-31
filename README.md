@@ -1,7 +1,7 @@
 # 🚨 ReliefIQ — AI-Powered Disaster Response Platform
 
 > **Hackathon:** Build with Gemma 4 — ML, AI, Deep Learning & NLP Community  
-> **Team:** sakibchy + collaborator  
+> **Team:** sakibchy + Ambia Ferdous Mimim  
 > **Model:** Gemma 4 via Google AI Studio  
 > **Status:** 🚧 In Development
 
@@ -221,4 +221,4 @@ MIT — see [LICENSE](LICENSE)
 ## 🤝 Team
 
 - **sakibchy** — Lead Developer
-- **Collaborator** — TBD
+- **Ambia Ferdous Mimim** — Collaborator
